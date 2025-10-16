@@ -96,7 +96,7 @@ export default function TruthDetector() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                  Veritas AI
+                  fake newss AI
                 </h1>
                 <p className="text-gray-400 text-sm font-light">Advanced Truth Detection System</p>
               </div>
