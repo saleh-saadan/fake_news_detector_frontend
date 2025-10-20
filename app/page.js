@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, Video, AlertCircle, CheckCircle, Loader2, Shield, Sparkles, Eye, Zap, Globe, Cpu, Brain, ArrowRight } from 'lucide-react';
+import { Upload, FileText, Video, AlertCircle, CheckCircle, Loader2, Shield, Sparkles, Eye, Zap, Globe, Cpu, Brain, ArrowRight, Bot, User } from 'lucide-react';
 import { analyzeNews as analyzeNewsAPI, analyzeVideo as analyzeVideoAPI } from '@/lib/api';
 
 export default function TruthDetector() {
@@ -9,29 +9,23 @@ export default function TruthDetector() {
   const [videoFile, setVideoFile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
   const [isHovered, setIsHovered] = useState(false);
   const fileInputRef = useRef(null);
-
+  
   const handleNewsAnalysis = async () => {
     if (!newsText.trim()) return;
     
     setLoading(true);
     setResult(null);
+    setErrorMsg(null);
     
     try {
       const data = await analyzeNewsAPI(newsText);
       setResult(data);
     } catch (error) {
       console.error('Error:', error);
-      setResult({
-        type: 'news',
-        isFake: false,
-        confidence: 0,
-        details: {
-          error: 'Backend connection failed',
-          status: 'Check if server is running on port 5000'
-        }
-      });
+      setErrorMsg(error.message || 'Backend connection failed');
     } finally {
       setLoading(false);
     }
@@ -42,21 +36,14 @@ export default function TruthDetector() {
     
     setLoading(true);
     setResult(null);
+    setErrorMsg(null);
     
     try {
       const data = await analyzeVideoAPI(videoFile);
       setResult(data);
     } catch (error) {
       console.error('Error:', error);
-      setResult({
-        type: 'video',
-        isDeepfake: false,
-        confidence: 0,
-        details: {
-          error: 'Backend connection failed',
-          status: 'Check if server is running on port 5000'
-        }
-      });
+      setErrorMsg(error.message || 'Backend connection failed');
     } finally {
       setLoading(false);
     }
@@ -67,6 +54,7 @@ export default function TruthDetector() {
     if (file && file.type.startsWith('video/')) {
       setVideoFile(file);
       setResult(null);
+      setErrorMsg(null);
     }
   };
 
@@ -74,9 +62,85 @@ export default function TruthDetector() {
     fileInputRef.current?.click();
   };
 
+  // Derive overall credibility verdict from claims
+  const deriveCredibilityVerdict = (res) => {
+    if (!res || !Array.isArray(res.claims) || res.claims.length === 0) {
+      return { label: 'No Claims Analyzed', tone: 'neutral', icon: AlertCircle };
+    }
+
+    const refutedCount = res.claims.filter(c => c.verdict === 'REFUTED').length;
+    const supportedCount = res.claims.filter(c => c.verdict === 'SUPPORTED').length;
+    const insufficientCount = res.claims.filter(c => c.verdict === 'INSUFFICIENT').length;
+    const total = res.claims.length;
+
+    // Calculate percentages
+    const refutedPercent = (refutedCount / total) * 100;
+    const supportedPercent = (supportedCount / total) * 100;
+
+    if (refutedPercent >= 50) {
+      return { 
+        label: 'Likely Contains Misinformation', 
+        tone: 'danger',
+        icon: AlertCircle,
+        detail: `${refutedCount}/${total} claims refuted`
+      };
+    } else if (refutedPercent > 0) {
+      return { 
+        label: 'Mixed Credibility - Verify Claims', 
+        tone: 'warn',
+        icon: AlertCircle,
+        detail: `${refutedCount} refuted, ${supportedCount} supported, ${insufficientCount} insufficient`
+      };
+    } else if (supportedPercent >= 80) {
+      return { 
+        label: 'Content Appears Credible', 
+        tone: 'good',
+        icon: CheckCircle,
+        detail: `${supportedCount}/${total} claims supported`
+      };
+    } else {
+      return { 
+        label: 'Insufficient Evidence', 
+        tone: 'warn',
+        icon: AlertCircle,
+        detail: `Unable to verify most claims`
+      };
+    }
+  };
+
+  // Get AI authorship verdict
+  const getAIVerdict = (res) => {
+    if (!res || typeof res.aiConfidence !== 'number') {
+      return { label: 'Unknown', tone: 'neutral', icon: Brain };
+    }
+
+    if (res.aiConfidence >= 70) {
+      return { 
+        label: 'Likely AI-Generated', 
+        tone: 'warn', 
+        icon: Bot 
+      };
+    } else if (res.aiConfidence >= 40) {
+      return { 
+        label: 'Possibly AI-Assisted', 
+        tone: 'neutral', 
+        icon: Brain 
+      };
+    } else {
+      return { 
+        label: 'Likely Human-Written', 
+        tone: 'good', 
+        icon: User 
+      };
+    }
+  };
+
+  const credibilityVerdict = result ? deriveCredibilityVerdict(result) : null;
+  const aiVerdict = result ? getAIVerdict(result) : null;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
-      {/* Animated Background Elements */}
+      {/* Animated Background */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-32 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
         <div className="absolute -bottom-40 -left-32 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse animation-delay-2000"></div>
@@ -96,9 +160,9 @@ export default function TruthDetector() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                  fake newss AI
+                  Truth Detector AI
                 </h1>
-                <p className="text-gray-400 text-sm font-light">Advanced Truth Detection System</p>
+                <p className="text-gray-400 text-sm font-light">Advanced Misinformation Detection</p>
               </div>
             </div>
             <div className="flex items-center gap-2 text-gray-400">
@@ -114,16 +178,15 @@ export default function TruthDetector() {
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-full px-4 py-2 mb-6">
             <Sparkles className="w-4 h-4 text-cyan-400" />
-            <span className="text-sm text-gray-300">Powered by Advanced AI Models</span>
+            <span className="text-sm text-gray-300">Powered by GPT-4 & Multi-Source Verification</span>
           </div>
           <h2 className="text-5xl font-bold text-white mb-4 leading-tight">
             Detect <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">Misinformation</span>
             <br />
-            in Real-Time
+            & AI Content
           </h2>
           <p className="text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-            Advanced AI-powered detection for fake news articles and deepfake videos. 
-            Protect yourself from digital deception.
+            Cross-reference claims with Wikipedia, news sources, and detect AI-generated content.
           </p>
         </div>
 
@@ -134,7 +197,7 @@ export default function TruthDetector() {
             {/* Tab Navigation */}
             <div className="flex gap-2 p-1 bg-white/5 rounded-2xl mb-8">
               <button
-                onClick={() => { setActiveTab('news'); setResult(null); }}
+                onClick={() => { setActiveTab('news'); setResult(null); setErrorMsg(null); }}
                 className={`flex items-center gap-3 flex-1 px-6 py-4 rounded-xl font-semibold transition-all duration-300 ${
                   activeTab === 'news'
                     ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-white shadow-lg border border-cyan-500/30'
@@ -145,7 +208,7 @@ export default function TruthDetector() {
                 Text Analysis
               </button>
               <button
-                onClick={() => { setActiveTab('deepfake'); setResult(null); }}
+                onClick={() => { setActiveTab('deepfake'); setResult(null); setErrorMsg(null); }}
                 className={`flex items-center gap-3 flex-1 px-6 py-4 rounded-xl font-semibold transition-all duration-300 ${
                   activeTab === 'deepfake'
                     ? 'bg-gradient-to-r from-cyan-500/20 to-blue-500/20 text-white shadow-lg border border-cyan-500/30'
@@ -176,7 +239,6 @@ export default function TruthDetector() {
                     {newsText.length} characters
                   </div>
                 </div>
-
                 <button
                   onClick={handleNewsAnalysis}
                   disabled={loading || !newsText.trim()}
@@ -189,7 +251,7 @@ export default function TruthDetector() {
                     ) : (
                       <>
                         <Eye className="w-5 h-5" />
-                        Analyze Authenticity
+                        Analyze Content
                       </>
                     )}
                   </div>
@@ -201,7 +263,6 @@ export default function TruthDetector() {
                   <Cpu className="w-6 h-6 text-cyan-400" />
                   <h3 className="text-xl font-semibold">Analyze Video Content</h3>
                 </div>
-
                 <div
                   onMouseEnter={() => setIsHovered(true)}
                   onMouseLeave={() => setIsHovered(false)}
@@ -222,12 +283,11 @@ export default function TruthDetector() {
                     </div>
                     <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl opacity-0 group-hover:opacity-10 blur-xl transition-opacity duration-300"></div>
                   </div>
-
                   <p className="text-white font-semibold text-lg mb-2">
                     {videoFile ? videoFile.name : 'Click to upload video file'}
                   </p>
                   <p className="text-gray-400 text-sm">
-                    Supports MP4, AVI, MOV • Max 50MB
+                    Supports MP4, AVI, MOV • Max 200MB
                   </p>
                   
                   {videoFile && (
@@ -237,7 +297,6 @@ export default function TruthDetector() {
                     </div>
                   )}
                 </div>
-
                 <button
                   onClick={handleVideoAnalysis}
                   disabled={loading || !videoFile}
@@ -266,7 +325,7 @@ export default function TruthDetector() {
               <h3 className="text-xl font-semibold">Analysis Results</h3>
             </div>
 
-            {!result && !loading && (
+            {!result && !loading && !errorMsg && (
               <div className="flex flex-col items-center justify-center h-96 text-gray-500">
                 <div className="w-24 h-24 bg-white/5 rounded-2xl flex items-center justify-center mb-6">
                   <Sparkles className="w-10 h-10 opacity-30" />
@@ -274,7 +333,7 @@ export default function TruthDetector() {
                 <p className="text-lg mb-2">Awaiting Analysis</p>
                 <p className="text-sm text-center max-w-sm">
                   {activeTab === 'news' 
-                    ? 'Paste text content and click analyze to verify authenticity'
+                    ? 'Paste text content and click analyze to verify authenticity and detect AI'
                     : 'Upload a video file to detect potential deepfake manipulation'
                   }
                 </p>
@@ -288,87 +347,231 @@ export default function TruthDetector() {
                   <div className="absolute inset-0 bg-cyan-400 rounded-full opacity-20 animate-ping"></div>
                 </div>
                 <p className="text-white text-lg font-semibold mb-2">Analyzing Content</p>
-                <p className="text-gray-400 text-sm">
+                <p className="text-gray-400 text-sm text-center max-w-md">
                   {activeTab === 'news' 
-                    ? 'Scanning for misinformation patterns...'
+                    ? 'Extracting claims, searching evidence sources, and checking for AI patterns...'
                     : 'Processing video frames for deepfake indicators...'
                   }
                 </p>
               </div>
             )}
 
-            {result && (
+            {errorMsg && (
+              <div className="flex flex-col items-center justify-center h-56 text-red-400">
+                <AlertCircle className="w-12 h-12 mb-4" />
+                <p className="text-lg font-semibold">Analysis Failed</p>
+                <p className="text-sm text-center max-w-md mt-2">{errorMsg}</p>
+                <button 
+                  onClick={() => setErrorMsg(null)}
+                  className="mt-4 px-4 py-2 bg-red-500/20 rounded-lg text-sm hover:bg-red-500/30 transition"
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+
+            {result && !errorMsg && activeTab === 'news' && (
               <div className="space-y-6 animate-in fade-in duration-500">
-                {/* Main Result Card */}
-                <div className={`p-6 rounded-2xl border-2 backdrop-blur-sm ${
-                  (result.type === 'news' && result.isFake) || (result.type === 'video' && result.isDeepfake)
-                    ? 'bg-red-500/10 border-red-500/30'
-                    : result.confidence === 0
-                    ? 'bg-yellow-500/10 border-yellow-500/30'
-                    : 'bg-green-500/10 border-green-500/30'
-                }`}>
-                  <div className="flex items-center gap-4">
-                    <div className={`flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center ${
-                      (result.type === 'news' && result.isFake) || (result.type === 'video' && result.isDeepfake)
-                        ? 'bg-red-500/20 text-red-400'
-                        : result.confidence === 0
-                        ? 'bg-yellow-500/20 text-yellow-400'
-                        : 'bg-green-500/20 text-green-400'
-                    }`}>
-                      {(result.type === 'news' && result.isFake) || (result.type === 'video' && result.isDeepfake) ? (
-                        <AlertCircle className="w-7 h-7" />
-                      ) : result.confidence === 0 ? (
-                        <AlertCircle className="w-7 h-7" />
-                      ) : (
-                        <CheckCircle className="w-7 h-7" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-white mb-1">
-                        {result.confidence === 0 
-                          ? 'Analysis Error'
-                          : result.type === 'news'
-                            ? (result.isFake ? 'Potential Misinformation' : 'Content Appears Authentic')
-                            : (result.isDeepfake ? 'Deepfake Detected' : 'Video Appears Authentic')
-                        }
-                      </h3>
-                      <p className="text-gray-300">
-                        {result.confidence === 0 
-                          ? 'Please check backend connection'
-                          : `Confidence: ${result.confidence}%`
-                        }
-                      </p>
+                {/* AI Authorship Card - FIRST */}
+                {aiVerdict && (
+                  <div className={`p-6 rounded-2xl border-2 backdrop-blur-sm ${
+                    aiVerdict.tone === 'warn' ? 'bg-orange-500/10 border-orange-500/30'
+                    : aiVerdict.tone === 'good' ? 'bg-green-500/10 border-green-500/30'
+                    : 'bg-blue-500/10 border-blue-500/30'
+                  }`}>
+                    <div className="flex items-start gap-4">
+                      <div className={`flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center ${
+                        aiVerdict.tone === 'warn' ? 'bg-orange-500/20'
+                        : aiVerdict.tone === 'good' ? 'bg-green-500/20'
+                        : 'bg-blue-500/20'
+                      }`}>
+                        <aiVerdict.icon className={`w-7 h-7 ${
+                          aiVerdict.tone === 'warn' ? 'text-orange-400'
+                          : aiVerdict.tone === 'good' ? 'text-green-400'
+                          : 'text-blue-400'
+                        }`} />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-xl font-bold text-white">
+                            {aiVerdict.label}
+                          </h3>
+                          <div className="text-right">
+                            <div className="text-3xl font-bold text-white">
+                              {result.aiConfidence}%
+                            </div>
+                            <div className="text-xs text-gray-400">AI probability</div>
+                          </div>
+                        </div>
+                        <p className="text-gray-300 text-sm leading-relaxed">
+                          {result.aiExplanation || 'AI detection analysis completed.'}
+                        </p>
+                        
+                        {/* Key Indicators */}
+                        {result.keyIndicators && result.keyIndicators.length > 0 && (
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {result.keyIndicators.map((indicator, idx) => (
+                              <span key={idx} className="text-xs px-2 py-1 bg-white/10 rounded-full text-gray-300">
+                                {indicator}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* AI Confidence Bar */}
+                        <div className="mt-3 h-2 bg-white/10 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full transition-all duration-1000 ${
+                              result.aiConfidence >= 70 ? 'bg-orange-400' 
+                              : result.aiConfidence >= 40 ? 'bg-blue-400' 
+                              : 'bg-green-400'
+                            }`}
+                            style={{ width: `${result.aiConfidence}%` }}
+                          ></div>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
-                {/* Detailed Analysis */}
-                {result.details && (
+                {/* Credibility Verdict Card - SECOND */}
+                {credibilityVerdict && (
+                  <div className={`p-6 rounded-2xl border-2 backdrop-blur-sm ${
+                    credibilityVerdict.tone === 'danger' ? 'bg-red-500/10 border-red-500/30'
+                    : credibilityVerdict.tone === 'warn' ? 'bg-yellow-500/10 border-yellow-500/30'
+                    : credibilityVerdict.tone === 'good' ? 'bg-green-500/10 border-green-500/30'
+                    : 'bg-gray-500/10 border-gray-500/30'
+                  }`}>
+                    <div className="flex items-start gap-4">
+                      <div className={`flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center ${
+                        credibilityVerdict.tone === 'danger' ? 'bg-red-500/20'
+                        : credibilityVerdict.tone === 'warn' ? 'bg-yellow-500/20'
+                        : credibilityVerdict.tone === 'good' ? 'bg-green-500/20'
+                        : 'bg-gray-500/20'
+                      }`}>
+                        <credibilityVerdict.icon className={`w-7 h-7 ${
+                          credibilityVerdict.tone === 'danger' ? 'text-red-400'
+                          : credibilityVerdict.tone === 'warn' ? 'text-yellow-400'
+                          : credibilityVerdict.tone === 'good' ? 'text-green-400'
+                          : 'text-gray-400'
+                        }`} />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-white mb-1">
+                          {credibilityVerdict.label}
+                        </h3>
+                        <p className="text-gray-300 text-sm">
+                          {credibilityVerdict.detail}
+                        </p>
+                        {result.overallAssessment && (
+                          <p className="text-gray-300 text-sm mt-2 leading-relaxed">
+                            {result.overallAssessment}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Claim-by-Claim Breakdown - THIRD */}
+                {Array.isArray(result.claims) && result.claims.length > 0 && (
                   <div className="space-y-4">
-                    <h4 className="font-semibold text-white text-lg">Detailed Analysis</h4>
+                    <h4 className="font-semibold text-white text-lg flex items-center gap-2">
+                      <FileText className="w-5 h-5 text-cyan-400" />
+                      Claim Breakdown
+                    </h4>
                     <div className="grid gap-3">
-                      {Object.entries(result.details).map(([key, value]) => (
-                        <div key={key} className="bg-white/5 rounded-xl p-4 border border-white/5 hover:border-white/10 transition-colors duration-200">
-                          <div className="flex justify-between items-center">
-                            <span className="text-gray-300 capitalize font-medium">
-                              {key.replace(/([A-Z])/g, ' $1').trim()}
-                            </span>
-                            <span className={`px-3 py-1 rounded-full text-sm font-semibold ${
-                              value === 'High' || value === 'Suspicious' || value === 'Mismatched' || 
-                              value === 'Inconsistent' || value === 'Unverified' || value === 'Questionable' || value === 'error'
-                                ? 'bg-red-500/20 text-red-400'
-                                : value === 'Check if server is running on port 5000' || value === 'status'
-                                ? 'bg-yellow-500/20 text-yellow-400'
-                                : 'bg-green-500/20 text-green-400'
-                            }`}>
-                              {value}
-                            </span>
+                      {result.claims.map((c, idx) => (
+                        <div key={idx} className="bg-white/5 rounded-xl p-5 border border-white/5 hover:border-white/10 transition">
+                          <div className="flex justify-between items-start gap-3 mb-3">
+                            <div className="flex-1">
+                              <div className="text-gray-400 text-xs font-medium mb-1 uppercase tracking-wide">Claim {idx + 1}</div>
+                              <div className="text-white font-medium leading-relaxed">{c.claim}</div>
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <div className={`px-3 py-1.5 rounded-lg text-sm font-bold uppercase tracking-wide ${
+                                c.verdict === 'REFUTED' ? 'bg-red-500/20 text-red-300 border border-red-500/30' 
+                                : c.verdict === 'SUPPORTED' ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                                : 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30'
+                              }`}>
+                                {c.verdict}
+                              </div>
+                              {typeof c.confidence === 'number' && (
+                                <div className="text-gray-400 text-xs mt-1">{c.confidence}% confidence</div>
+                              )}
+                            </div>
                           </div>
+                          
+                          {c.explanation && (
+                            <div className="bg-white/5 rounded-lg p-3 mb-3">
+                              <p className="text-gray-300 text-sm leading-relaxed">{c.explanation}</p>
+                            </div>
+                          )}
+                          
+                          {/* Evidence Sources */}
+                          {Array.isArray(c.topEvidence) && c.topEvidence.length > 0 && (
+                            <div className="mt-3">
+                              <div className="text-gray-400 text-xs font-medium mb-2 uppercase tracking-wide">Evidence Sources</div>
+                              <div className="space-y-2">
+                                {c.topEvidence.slice(0, 3).map((e, i) => (
+                                  <a 
+                                    key={i} 
+                                    href={e.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="block bg-white/5 rounded-lg p-3 hover:bg-white/10 transition group"
+                                  >
+                                    <div className="flex items-start gap-2">
+                                      <Globe className="w-4 h-4 text-cyan-400 mt-0.5 flex-shrink-0" />
+                                      <div className="flex-1 min-w-0">
+                                        <div className="text-cyan-300 text-sm font-medium group-hover:underline truncate">
+                                          {e.title || 'Source'}
+                                        </div>
+                                        {e.snippet && (
+                                          <div className="text-gray-400 text-xs mt-1 line-clamp-2">
+                                            {e.snippet.slice(0, 150)}{e.snippet.length > 150 ? '...' : ''}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </a>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Video Results */}
+            {result && !errorMsg && activeTab === 'deepfake' && (
+              <div className="space-y-6 animate-in fade-in duration-500">
+                <div className={`p-6 rounded-2xl border-2 backdrop-blur-sm ${
+                  result.isDeepfake ? 'bg-red-500/10 border-red-500/30' : 'bg-green-500/10 border-green-500/30'
+                }`}>
+                  <div className="flex items-center gap-4">
+                    <div className={`flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center ${
+                      result.isDeepfake ? 'bg-red-500/20 text-red-400' : 'bg-green-500/20 text-green-400'
+                    }`}>
+                      {result.isDeepfake ? <AlertCircle className="w-7 h-7" /> : <CheckCircle className="w-7 h-7" />}
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-xl font-bold text-white mb-1">
+                        {result.isDeepfake ? 'Deepfake Detected' : 'Video Appears Authentic'}
+                      </h3>
+                      <p className="text-gray-300">{result.explanation || 'Analysis completed.'}</p>
+                      {typeof result.confidence === 'number' && (
+                        <div className="mt-2 text-sm text-gray-400">
+                          Confidence: {result.confidence}%
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -380,29 +583,27 @@ export default function TruthDetector() {
             <div className="w-12 h-12 bg-cyan-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
               <Brain className="w-6 h-6 text-cyan-400" />
             </div>
-            <h3 className="text-white font-semibold text-lg mb-2">Advanced NLP</h3>
+            <h3 className="text-white font-semibold text-lg mb-2">Multi-Source Verification</h3>
             <p className="text-gray-400 text-sm">
-              Natural Language Processing analyzes emotional patterns, source credibility, and claim verification.
+              Cross-references claims with Wikipedia, NewsAPI, and other trusted sources.
             </p>
           </div>
-
           <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:border-blue-500/30 transition-all duration-300 group">
             <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
-              <Cpu className="w-6 h-6 text-blue-400" />
+              <Bot className="w-6 h-6 text-blue-400" />
             </div>
-            <h3 className="text-white font-semibold text-lg mb-2">CNN Technology</h3>
+            <h3 className="text-white font-semibold text-lg mb-2">AI Content Detection</h3>
             <p className="text-gray-400 text-sm">
-              Convolutional Neural Networks detect facial inconsistencies and video manipulation patterns.
+              Identifies AI-generated text by analyzing patterns, style, and linguistic markers.
             </p>
           </div>
-
           <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:border-purple-500/30 transition-all duration-300 group">
             <div className="w-12 h-12 bg-purple-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
               <Zap className="w-6 h-6 text-purple-400" />
             </div>
-            <h3 className="text-white font-semibold text-lg mb-2">Real-Time Analysis</h3>
+            <h3 className="text-white font-semibold text-lg mb-2">Transparent Analysis</h3>
             <p className="text-gray-400 text-sm">
-              Get instant results with detailed confidence scores and comprehensive breakdowns.
+              Shows evidence sources and reasoning, allowing manual verification of results.
             </p>
           </div>
         </div>
@@ -411,15 +612,25 @@ export default function TruthDetector() {
         <div className="text-center">
           <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 backdrop-blur-sm rounded-3xl p-8 border border-cyan-500/20">
             <h3 className="text-2xl font-bold text-white mb-4">
-              Ready to Verify Your Content?
+              How It Works
             </h3>
-            <p className="text-gray-300 mb-6 max-w-2xl mx-auto">
-              Join the fight against misinformation. Our AI-powered platform helps you distinguish truth from deception in both text and video content.
+            <div className="max-w-3xl mx-auto text-left grid md:grid-cols-3 gap-4 mb-6">
+              <div className="bg-white/5 rounded-xl p-4">
+                <div className="text-cyan-400 font-bold mb-2">1. Extract Claims</div>
+                <p className="text-gray-300 text-sm">AI identifies specific, verifiable statements from your text</p>
+              </div>
+              <div className="bg-white/5 rounded-xl p-4">
+                <div className="text-cyan-400 font-bold mb-2">2. Gather Evidence</div>
+                <p className="text-gray-300 text-sm">Searches Wikipedia, news sources, and databases for relevant info</p>
+              </div>
+              <div className="bg-white/5 rounded-xl p-4">
+                <div className="text-cyan-400 font-bold mb-2">3. Analyze & Report</div>
+                <p className="text-gray-300 text-sm">GPT-4 evaluates evidence and provides detailed verdict with sources</p>
+              </div>
+            </div>
+            <p className="text-gray-400 text-sm max-w-2xl mx-auto">
+              This tool assists human judgment - always verify important claims manually using provided sources.
             </p>
-            <button className="group bg-white text-gray-900 px-8 py-4 rounded-2xl font-semibold hover:shadow-2xl transition-all duration-300 inline-flex items-center gap-2">
-              Start Analyzing
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
-            </button>
           </div>
         </div>
       </div>
