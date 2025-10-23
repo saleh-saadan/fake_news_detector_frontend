@@ -163,8 +163,7 @@ export default function TruthDetector() {
               </div>
             </div>
             <div className="flex items-center gap-2 text-gray-400">
-              <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium">System Online</span>
+              
             </div>
           </div>
         </div>
