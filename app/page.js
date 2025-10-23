@@ -158,7 +158,7 @@ export default function TruthDetector() {
               </div>
               <div>
                 <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                  Truth Detector AI
+                  Detect Misinformation
                 </h1>
                 <p className="text-gray-400 text-sm font-light">Advanced Misinformation Detection</p>
               </div>
