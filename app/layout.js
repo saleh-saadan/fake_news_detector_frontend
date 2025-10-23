@@ -13,8 +13,12 @@ const geistMono = Geist_Mono({
 
 export const metadata = {
   title: "Fake News Detector",
-  description: "no more fake news",
+  description: "Fake News Detector",
+  icons: {
+    icon: "/cs_logo.png", 
+  },
 };
+
 
 export default function RootLayout({ children }) {
   return (
