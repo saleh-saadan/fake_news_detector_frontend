@@ -62,7 +62,7 @@ export default function TruthDetector() {
     fileInputRef.current?.click();
   };
 
-  // Derive overall credibility verdict from claims
+ 
   const deriveCredibilityVerdict = (res) => {
     if (!res || !Array.isArray(res.claims) || res.claims.length === 0) {
       return { label: 'No Claims Analyzed', tone: 'neutral', icon: AlertCircle };
@@ -73,7 +73,6 @@ export default function TruthDetector() {
     const insufficientCount = res.claims.filter(c => c.verdict === 'INSUFFICIENT').length;
     const total = res.claims.length;
 
-    // Calculate percentages
     const refutedPercent = (refutedCount / total) * 100;
     const supportedPercent = (supportedCount / total) * 100;
 
@@ -108,7 +107,6 @@ export default function TruthDetector() {
     }
   };
 
-  // Get AI authorship verdict
   const getAIVerdict = (res) => {
     if (!res || typeof res.aiConfidence !== 'number') {
       return { label: 'Unknown', tone: 'neutral', icon: Brain };
@@ -140,14 +138,14 @@ export default function TruthDetector() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-gray-900 relative overflow-hidden">
-      {/* Animated Background */}
+      
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute -top-40 -right-32 w-80 h-80 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
         <div className="absolute -bottom-40 -left-32 w-80 h-80 bg-blue-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse animation-delay-2000"></div>
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-xl opacity-10 animate-pulse animation-delay-4000"></div>
       </div>
 
-      {/* Header */}
+      
       <div className="relative z-10 bg-black/20 backdrop-blur-xl border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
@@ -174,7 +172,7 @@ export default function TruthDetector() {
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
-        {/* Hero Section */}
+    
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 bg-white/5 backdrop-blur-sm border border-white/10 rounded-full px-4 py-2 mb-6">
             <Sparkles className="w-4 h-4 text-cyan-400" />
@@ -190,11 +188,11 @@ export default function TruthDetector() {
           </p>
         </div>
 
-        {/* Main Content Grid */}
+      
         <div className="grid lg:grid-cols-2 gap-8 mb-12">
-          {/* Input Panel */}
+         
           <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-8 shadow-2xl">
-            {/* Tab Navigation */}
+     
             <div className="flex gap-2 p-1 bg-white/5 rounded-2xl mb-8">
               <button
                 onClick={() => { setActiveTab('news'); setResult(null); setErrorMsg(null); }}
@@ -220,7 +218,7 @@ export default function TruthDetector() {
               </button>
             </div>
 
-            {/* Input Content */}
+           
             {activeTab === 'news' ? (
               <div className="space-y-6">
                 <div className="flex items-center gap-3 text-white mb-4">
@@ -318,7 +316,7 @@ export default function TruthDetector() {
             )}
           </div>
 
-          {/* Results Panel */}
+      
           <div className="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-8 shadow-2xl">
             <div className="flex items-center gap-3 text-white mb-6">
               <Globe className="w-6 h-6 text-cyan-400" />
@@ -372,7 +370,7 @@ export default function TruthDetector() {
 
             {result && !errorMsg && activeTab === 'news' && (
               <div className="space-y-6 animate-in fade-in duration-500">
-                {/* AI Authorship Card - FIRST */}
+               
                 {aiVerdict && (
                   <div className={`p-6 rounded-2xl border-2 backdrop-blur-sm ${
                     aiVerdict.tone === 'warn' ? 'bg-orange-500/10 border-orange-500/30'
@@ -407,7 +405,7 @@ export default function TruthDetector() {
                           {result.aiExplanation || 'AI detection analysis completed.'}
                         </p>
                         
-                        {/* Key Indicators */}
+                      
                         {result.keyIndicators && result.keyIndicators.length > 0 && (
                           <div className="mt-3 flex flex-wrap gap-2">
                             {result.keyIndicators.map((indicator, idx) => (
@@ -417,8 +415,7 @@ export default function TruthDetector() {
                             ))}
                           </div>
                         )}
-                        
-                        {/* AI Confidence Bar */}
+                     
                         <div className="mt-3 h-2 bg-white/10 rounded-full overflow-hidden">
                           <div 
                             className={`h-full transition-all duration-1000 ${
@@ -434,7 +431,6 @@ export default function TruthDetector() {
                   </div>
                 )}
 
-                {/* Credibility Verdict Card - SECOND */}
                 {credibilityVerdict && (
                   <div className={`p-6 rounded-2xl border-2 backdrop-blur-sm ${
                     credibilityVerdict.tone === 'danger' ? 'bg-red-500/10 border-red-500/30'
@@ -473,7 +469,7 @@ export default function TruthDetector() {
                   </div>
                 )}
 
-                {/* Claim-by-Claim Breakdown - THIRD */}
+               
                 {Array.isArray(result.claims) && result.claims.length > 0 && (
                   <div className="space-y-4">
                     <h4 className="font-semibold text-white text-lg flex items-center gap-2">
@@ -507,8 +503,7 @@ export default function TruthDetector() {
                               <p className="text-gray-300 text-sm leading-relaxed">{c.explanation}</p>
                             </div>
                           )}
-                          
-                          {/* Evidence Sources */}
+                   
                           {Array.isArray(c.topEvidence) && c.topEvidence.length > 0 && (
                             <div className="mt-3">
                               <div className="text-gray-400 text-xs font-medium mb-2 uppercase tracking-wide">Evidence Sources</div>
@@ -547,7 +542,7 @@ export default function TruthDetector() {
               </div>
             )}
 
-            {/* Video Results */}
+           
             {result && !errorMsg && activeTab === 'deepfake' && (
               <div className="space-y-6 animate-in fade-in duration-500">
                 <div className={`p-6 rounded-2xl border-2 backdrop-blur-sm ${
@@ -577,7 +572,7 @@ export default function TruthDetector() {
           </div>
         </div>
 
-        {/* Features Grid */}
+       
         <div className="grid md:grid-cols-3 gap-6 mb-12">
           <div className="bg-white/5 backdrop-blur-sm rounded-2xl p-6 border border-white/10 hover:border-cyan-500/30 transition-all duration-300 group">
             <div className="w-12 h-12 bg-cyan-500/10 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
@@ -608,7 +603,6 @@ export default function TruthDetector() {
           </div>
         </div>
 
-        {/* CTA Section */}
         <div className="text-center">
           <div className="bg-gradient-to-r from-cyan-500/10 to-blue-500/10 backdrop-blur-sm rounded-3xl p-8 border border-cyan-500/20">
             <h3 className="text-2xl font-bold text-white mb-4">

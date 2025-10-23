@@ -12,7 +12,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Fake news ahaha",
+  title: "Fake News Detector",
   description: "no more fake news",
 };
 
